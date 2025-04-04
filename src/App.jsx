@@ -1,178 +1,156 @@
-import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Routes, Link, useParams, useNavigate } from "react-router-dom";
-import "./styles.css";
+import React, { useState, useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  useParams,
+} from "react-router-dom";
+import axios from "axios";
+import "./App.css";
 
-const fetchProducts = async () => {
-  try {
-    const response = await fetch("https://fakestoreapi.com/products");
-    if (!response.ok) throw new Error("Network response was not ok");
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    throw error;
-  }
-};
+export default function App() {
+  const [movies, setMovies] = useState([]);
 
-function Home() {
-  const [products, setProducts] = useState([]);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [sortOrder, setSortOrder] = useState("asc");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const handleSearch = (searchResults) => {
+    setMovies(searchResults);
+  };
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await fetchProducts();
-        setProducts(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
-  const filteredProducts = products
-    .filter(product => 
-      product.title.toLowerCase().includes(search.toLowerCase())
-    )
-    .filter(product => 
-      category ? product.category === category : true
-    )
-    .sort((a, b) => 
-      sortOrder === "asc" ? a.price - b.price : b.price - a.price
-    );
-
-  if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">Error: {error}</div>;
-
-  return (
-    <div className="container">
-      <h1 className="page-title">Product Catalog</h1>
-      
-      <div className="filter-controls">
-        <input
-          type="text"
-          placeholder="Search..."
-          className="search-input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="category-select"
-        >
-          <option value="">All Categories</option>
-          <option value="electronics">Electronics</option>
-          <option value="jewelery">Jewelery</option>
-          <option value="men's clothing">Men's Clothing</option>
-          <option value="women's clothing">Women's Clothing</option>
-        </select>
-        
-        <div className="sort-buttons">
-          <button
-            className={`sort-btn ${sortOrder === "asc" ? "active" : ""}`}
-            onClick={() => setSortOrder("asc")}
-          >
-            Price: Low to High
-          </button>
-          <button
-            className={`sort-btn ${sortOrder === "desc" ? "active" : ""}`}
-            onClick={() => setSortOrder("desc")}
-          >
-            Price: High to Low
-          </button>
-        </div>
-      </div>
-
-      {filteredProducts.length === 0 ? (
-        <div className="no-products">No products found</div>
-      ) : (
-        <div className="product-grid">
-          {filteredProducts.map((product) => (
-            <Link to={`/product/${product.id}`} key={product.id} className="product-card">
-              <img src={product.image} alt={product.title} className="product-image" />
-              <div className="product-info">
-                <h3 className="product-title">{product.title}</h3>
-                <p className="product-price">${product.price.toFixed(2)}</p>
-                <p className="product-category">{product.category}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ProductDetail() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`https://fakestoreapi.com/products/${id}`);
-        if (!response.ok) throw new Error("Product not found");
-        const data = await response.json();
-        setProduct(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id]);
-
-  if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">Error: {error}</div>;
-
-  return (
-    <div className="container">
-      <button onClick={() => navigate(-1)} className="back-button">
-        &larr; Back
-      </button>
-      
-      <div className="product-detail-container">
-        <div className="product-image-wrapper">
-          <img src={product.image} alt={product.title} className="detail-image" />
-        </div>
-        
-        <div className="product-details">
-          <h1 className="detail-title">{product.title}</h1>
-          <div className="product-meta">
-            <span className="detail-price">${product.price.toFixed(2)}</span>
-            <span className="detail-category">{product.category}</span>
-            <div className="detail-rating">
-              Rating: {product.rating.rate} ({product.rating.count} reviews)
-            </div>
-          </div>
-          <p className="detail-description">{product.description}</p>
-          <button className="add-to-cart-btn">Add to Cart</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-      </Routes>
+      <div className="App">
+        <h1>Movie Izdeu Qosymshasy</h1>
+        <Search onSearch={handleSearch} />
+        <Routes>
+          <Route path="/" element={<MovieList movies={movies} />} />
+          <Route path="/movie/:id" element={<MovieDetail />} />
+        </Routes>
+      </div>
     </Router>
   );
 }
 
-export default App;
+const Search = ({ onSearch }) => {
+  const [query, setQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const searchMovies = async (e) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const response = await axios.get(
+        `https://www.omdbapi.com/?apikey=17dec6d0&s=${query}`
+      );
+      if (response.data.Response === "False") {
+        onSearch([]);
+        setError("Film tabylmady!");
+      } else {
+        onSearch(response.data.Search);
+        setError("");
+      }
+    } catch (error) {
+      console.log("Qate:", error);
+      setError("Filmderdi izdeu kezinde qate boldy!");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={searchMovies}>
+      <input
+        type="text"
+        placeholder="Film atawyn engiziniz"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? "Izdew..." : "Izdew"}
+      </button>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+    </form>
+  );
+};
+
+const MovieList = ({ movies }) => {
+  return (
+    <div className="movie-list">
+      {movies.length > 0 ? (
+        movies.map((movie) => (
+          <Link
+            to={`/movie/${movie.imdbID}`}
+            key={movie.imdbID}
+            className="movie-card"
+            aria-label={`Tolygraq ${movie.Title} filmi turaly`}
+          >
+            <div className="movie-poster">
+              <img
+                src={
+                  movie.Poster !== "N/A"
+                    ? movie.Poster
+                    : "https://via.placeholder.com/300x450?text=No+Poster"
+                }
+                alt={`Poster ${movie.Title}`}
+                loading="lazy"
+              />
+            </div>
+            <div className="movie-info">
+              <h3 className="movie-title">{movie.Title}</h3>
+              <p className="movie-meta">
+                <span>{movie.Year}</span> *{" "}
+                <span>{movie.Type === "movie" ? "Film" : "Serial"}</span>
+              </p>
+            </div>
+          </Link>
+        ))
+      ) : (
+        <p>Film tabylmady</p>
+      )}
+    </div>
+  );
+};
+
+const MovieDetail = () => {
+  const { id } = useParams();
+  const [movie, setMovie] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchMovie() {
+      try {
+        const response = await axios.get(
+          `https://www.omdbapi.com/?apikey=17dec6d0&i=${id}`
+        );
+        setMovie(response.data);
+      } catch (error) {
+        console.log("film izdeude qate oryn aldy", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMovie();
+  }, [id]);
+
+  if (loading) return <p className="loading">Juktelyde</p>;
+
+  return (
+    <div className="movie-detail">
+      <h2>{movie.Title}</h2>
+      <img src={movie.Poster} alt={movie.Title} />
+      <p>{movie.Plot}</p>
+      <p>
+        <strong>Zhanr:</strong> {movie.Genre}
+      </p>
+      <p>
+        <strong>Rejisser:</strong> {movie.Director}
+      </p>
+      <p>
+        <strong>Jyl:</strong> {movie.Year}
+      </p>
+      <Link to="/">Artka</Link>
+    </div>
+  );
+};
