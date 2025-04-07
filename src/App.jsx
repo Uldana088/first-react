@@ -1,150 +1,118 @@
-import React, { useState, useEffect } from "react";
-import {BrowserRouter as Router,Routes,Route,Link,useParams,} from "react-router-dom";
+import { useState, useEffect } from "react";
+import { BrowserRouter, useNavigate, useParams ,  Navigate, Routes, Route, Link,  } from "react-router-dom";
 import axios from "axios";
 import "./App.css";
 
 export default function App() {
-  const [movies, setMovies] = useState([]);
+  const[login , setLogin] = useState(false);
+  const [book , setBook] = useState([]);
 
-  const handleSearch = (searchResults) => {
-    setMovies(searchResults);
-  };
+  useEffect(() => {
+    if (login) {
+      axios.get("https://67873274c4a42c916105d2fe.mockapi.io/api/onlineduken/books")
+        .then(respon => setBook(respon.data));
+    }
+  }, [login])
 
   return (
-    <Router>
-      <div className="App">
-        <h1>Movie Izdeu Qosymshasy</h1>
-        <Search onSearch={handleSearch} />
-        <Routes>
-          <Route path="/" element={<MovieList movies={movies} />} />
-          <Route path="/movie/:id" element={<MovieDetail />} />
-        </Routes>
-      </div>
-    </Router>
+    <BrowserRouter>
+        {login && (
+        <nav className="navbar">
+          <Link className="nav-link" to="/home">Home</Link>
+          <Link className="nav-link" to="/gallery">Book Gallery</Link>
+        </nav>
+      )}
+
+      <Routes>
+        <Route path="/" element={login ? <Navigate to="/home" /> : <LoginPage onLogin={() => setLogin(true)} />} />
+        <Route path="/home" element={login ? <HomePage /> : <Navigate to="/" />} />
+        <Route path="/gallery" element={login ? <GalleryPage books={book} /> : <Navigate to="/" />} />
+        <Route path="/book/:id" element={login ? <Kitaptolygyraq books={book} /> : <Navigate to="/" />} />
+      </Routes>
+
+    </BrowserRouter>
+  )
+
+  
+function HomePage() {
+  return (
+    <div className="homePage">
+      <h1>Welcome to Libraryy!</h1>
+    </div>
   );
 }
 
-const Search = ({ onSearch }) => {
-  const [query, setQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+function LoginPage({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const searchMovies = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!query.trim()) return;
-
-    setIsLoading(true);
-    try {
-      const response = await axios.get(
-        `https://www.omdbapi.com/?apikey=17dec6d0&s=${query}`
-      );
-      if (response.data.Response === "False") {
-        onSearch([]);
-        setError("Film tabylmady!");
-      } else {
-        onSearch(response.data.Search);
-        setError("");
-      }
-    } catch (error) {
-      console.log("Qate:", error);
-      setError("Filmderdi izdeu kezinde qate boldy!");
-    } finally {
-      setIsLoading(false);
+    const emailTeksery = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailTeksery) {
+      setError("qate, email durys emes @ boly kerek");
+    } else if (password.length < 4) {
+      setError("Qate, parol 4 ten az bolmaui kerek");
+    } else {
+      onLogin();
+      navigate("/home");
     }
-  };
+  }
 
   return (
-    <form onSubmit={searchMovies}>
-      <input
-        type="text"
-        placeholder="Film atawyn engiziniz"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <button type="submit" disabled={isLoading}>
-        {isLoading ? "Izdew..." : "Izdew"}
-      </button>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-    </form>
-  );
-};
-
-const MovieList = ({ movies }) => {
-  return (
-    <div className="movie-list">
-      {movies.length > 0 ? (
-        movies.map((movie) => (
-          <Link
-            to={`/movie/${movie.imdbID}`}
-            key={movie.imdbID}
-            className="movie-card"
-            aria-label={`Tolygraq ${movie.Title} filmi turaly`}
-          >
-            <div className="movie-poster">
-              <img
-                src={
-                  movie.Poster !== "N/A"
-                    ? movie.Poster
-                    : "https://via.placeholder.com/300x450?text=No+Poster"
-                }
-                alt={`Poster ${movie.Title}`}
-                loading="lazy"
-              />
-            </div>
-            <div className="movie-info">
-              <h3 className="movie-title">{movie.Title}</h3>
-              <p className="movie-meta">
-                <span>{movie.Year}</span> *{" "}
-                <span>{movie.Type === "movie" ? "Film" : "Serial"}</span>
-              </p>
-            </div>
-          </Link>
-        ))
-      ) : (
-        <p>Film tabylmady</p>
-      )}
+    <div className="loginPage">
+      <form className="loginForm" onSubmit={handleSubmit}>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Parol"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        {error && <p className="error">{error}</p>}
+        <button type="submit">Kiru</button>
+      </form>
     </div>
   );
-};
+}
 
-const MovieDetail = () => {
+function GalleryPage({ books }) {
+  const navigate = useNavigate();
+  return (
+    <div className="libraryPage bookGrid">
+      {books.map((book) => (
+        <div key={book.id} className="bookCard" onClick={() => navigate(`/book/${book.id}`)}>
+          <img src={book.image}  />
+          <h2>{book.title}</h2>
+          <button>Tolygyraq kory</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Kitaptolygyraq({ books }) {
   const { id } = useParams();
-  const [movie, setMovie] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const book = books.find((b) => b.id === id);
 
-  useEffect(() => {
-    async function fetchMovie() {
-      try {
-        const response = await axios.get(
-          `https://www.omdbapi.com/?apikey=17dec6d0&i=${id}`
-        );
-        setMovie(response.data);
-      } catch (error) {
-        console.log("film izdeude qate oryn aldy", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchMovie();
-  }, [id]);
-
-  if (loading) return <p className="loading">Juktelyde</p>;
+  if (!book) return <div className="homePage"><h3>kitap tabylmady</h3></div>;
 
   return (
-    <div className="movie-detail">
-      <h2>{movie.Title}</h2>
-      <img src={movie.Poster} alt={movie.Title} />
-      <p>{movie.Plot}</p>
-      <p>
-        <strong>Zhanr:</strong> {movie.Genre}
-      </p>
-      <p>
-        <strong>Rejisser:</strong> {movie.Director}
-      </p>
-      <p>
-        <strong>Jyl:</strong> {movie.Year}
-      </p>
-      <Link to="/">Artka</Link>
+    <div className="bookDetail">
+      <img src={book.image} alt={book.title} />
+      <div className="bookInfo">
+        <h2>{book.title}</h2>
+        <p>{book.description}</p>
+        <strong>Author: {book.author}</strong>
+      </div>
     </div>
   );
-};
+}
+}
